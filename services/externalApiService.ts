@@ -1,11 +1,12 @@
-import { TeamData } from '../types/team';
+import { NBATeamData, NFLTeamData, MLBTeamData } from '../types/team';
 
 export default async function fetchExternalData(
 	url: string
-): Promise<TeamData[]> {
+): Promise<NBATeamData[] | NFLTeamData[] | MLBTeamData[]> {
 	try {
 		const response: Response = await fetch(url);
-		const data: TeamData[] = await response.json();
+		const data: NBATeamData[] | NFLTeamData[] | MLBTeamData[] =
+			await response.json();
 		return data;
 	} catch (error) {
 		console.error('Error fetching external data: ', error);

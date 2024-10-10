@@ -1,12 +1,12 @@
 import fetchExternalData from './externalApiService';
-import { NBATeamData, NFLTeamData } from '../types/team';
+import { NBATeamData, NFLTeamData, MLBTeamData } from '../types/team';
 import { ProcessedTeamData } from '../types/processedTeamData';
 
 export default async function processData(
 	league: string,
 	apiUrl: string
 ): Promise<ProcessedTeamData[]> {
-	const rawData: NBATeamData[] | NFLTeamData[] =
+	const rawData: NBATeamData[] | NFLTeamData[] | MLBTeamData[] =
 		await fetchExternalData(apiUrl);
 	let processedData: ProcessedTeamData[] = [];
 
