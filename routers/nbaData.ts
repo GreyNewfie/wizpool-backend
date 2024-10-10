@@ -6,11 +6,7 @@ import { ProcessedTeamData } from '../types/processedTeamData';
 
 const router = Router();
 
-router.get('/', (req, res) => {
-	res.send('API Data');
-});
-
-router.get('/nba', async (req, res) => {
+router.get('/', async (req, res) => {
 	try {
 		// Ensure typescript knows that process.env.NBA_API_URL is a string & not undefined
 		if (!process.env.NBA_API_URL)
