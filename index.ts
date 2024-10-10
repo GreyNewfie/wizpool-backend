@@ -1,10 +1,10 @@
 import express from 'express';
-import apiDataRouter from './routers/apiData';
+import apiNbaDataRouter from './routers/nbaData';
 
 const app = express();
 require('dotenv').config();
 
-app.use('/data', apiDataRouter);
+app.use('/data', apiNbaDataRouter);
 
 app.get('/', (req, res) => {
 	res.send('Hello World!');
