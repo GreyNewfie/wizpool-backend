@@ -3,6 +3,11 @@ import { turso } from '../db';
 
 const router = Router();
 
+// Formate date to YYYY-MM-DD HH:MM:SS
+function formatISODate(isoDateString: string) {
+	return isoDateString.replace('T', ' ').split('.')[0];
+}
+
 router.post('/', async (req: Request, res: Response) => {
 	try {
 		const { id, name, league } = req.body;
@@ -11,7 +16,7 @@ router.post('/', async (req: Request, res: Response) => {
 			return res.status(400).send('An id, name, and league are required');
 		}
 
-		const dateUpdated = new Date().toISOString();
+		const dateUpdated = formatISODate(new Date().toISOString());
 
 		await turso.execute({
 			sql: 'INSERT INTO pools (id, name, league, date_updated) VALUES (?, ?, ?, ?)',
