@@ -18,7 +18,7 @@ router.post('/', async (req, res) => {
 		}
 
 		await turso.execute({
-			sql: 'INSERT INTO player_pools (pool_id, pool_name, player_id, player_team_name ) VALUES (?, ?, ?, ?)',
+			sql: 'INSERT INTO pool_players (pool_id, pool_name, player_id, player_team_name ) VALUES (?, ?, ?, ?)',
 			args: [pool_id, pool_name, player_id, player_team_name],
 		});
 
