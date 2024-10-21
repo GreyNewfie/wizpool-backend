@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router } from 'express';
 import { turso } from '../db';
 
 const router = Router();
@@ -8,7 +8,7 @@ function formatISODate(isoDateString: string) {
 	return isoDateString.replace('T', ' ').split('.')[0];
 }
 
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', async (req, res) => {
 	try {
 		const { id, name, league } = req.body;
 
@@ -24,9 +24,11 @@ router.post('/', async (req: Request, res: Response) => {
 		});
 
 		console.log(`Pool ${name} added to database`);
-		res.status(200).json({ message: 'Pool created successfully' });
+		res.status(201).json({ message: `Pool ${name} created successfully` });
 	} catch (error) {
 		console.log('Error adding pool to database: ', error);
+		console.log('Pool data that failed to add: ', req.body);
+
 		res.status(500).json({ error: 'Failed to add pool' });
 	}
 });
