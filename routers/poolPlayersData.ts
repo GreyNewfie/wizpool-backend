@@ -25,7 +25,11 @@ router.post('/', async (req, res) => {
 		console.log(
 			`Pool ${pool_name} player ${player_team_name} has been added to pool_players table`
 		);
-		res.status(201).json({ message: `Pool and player added successfully` });
+		res
+			.status(201)
+			.json({
+				message: `Pool ${pool_name} player ${player_team_name} added successfully`,
+			});
 	} catch (error) {
 		console.log('Error adding pool and player to database: ', error);
 		console.log('Pool and player data that failed to add: ', req.body);
