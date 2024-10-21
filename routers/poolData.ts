@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { turso } from '../db';
+import { PoolData } from '../types/pool';
 
 const router = Router();
 
@@ -10,7 +11,7 @@ function formatISODate(isoDateString: string) {
 
 router.post('/', async (req, res) => {
 	try {
-		const { id, name, league } = req.body;
+		const { id, name, league } = req.body as PoolData;
 
 		if (!id || !name || !league) {
 			return res.status(400).send('An id, name, and league are required');
