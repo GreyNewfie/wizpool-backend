@@ -3,3 +3,8 @@ export interface PoolData {
 	name: string;
 	league: string;
 }
+
+export interface PlayerData {
+	id: string;
+	name: string;
+}
