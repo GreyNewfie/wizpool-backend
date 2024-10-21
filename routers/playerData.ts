@@ -12,7 +12,7 @@ router.post('/', async (req, res) => {
 			return res.status(400).send('Player id and name are required');
 		}
 
-		turso.execute({
+		await turso.execute({
 			sql: 'INSERT INTO players (id, name) VALUES (?, ?)',
 			args: [id, name],
 		});
