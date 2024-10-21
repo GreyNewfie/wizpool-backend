@@ -5,6 +5,7 @@ import apiMlbDataRouter from './routers/mlbData';
 import apiPoolDataRouter from './routers/poolData';
 import apiPlayerDataRouter from './routers/playerData';
 import apiPoolPlayersDataRouter from './routers/poolPlayersData';
+import apiPlayerTeamsDataRouter from './routers/playerTeamsData';
 import cors from 'cors';
 
 const app = express();
@@ -26,6 +27,7 @@ app.use('/api/mlb_data', apiMlbDataRouter);
 app.use('/api/pools', apiPoolDataRouter);
 app.use('/api/players', apiPlayerDataRouter);
 app.use('/api/pool_players', apiPoolPlayersDataRouter);
+app.use('/api/player_teams', apiPlayerTeamsDataRouter);
 
 app.get('/api', (req, res) => {
 	res.send("You've reached the Wizpool backend!");
