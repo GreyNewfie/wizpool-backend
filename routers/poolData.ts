@@ -34,4 +34,30 @@ router.post('/', async (req, res) => {
 	}
 });
 
+router.get('/:poolId', async (req, res) => {
+	try {
+		const { poolId } = req.params;
+
+		if (!poolId)
+			return res.status(400).send('a pool id is required to fetch pool by ID');
+
+		const result = await turso.execute({
+			sql: 'SELECT * FROM pools WHERE id = ?',
+			args: [poolId],
+		});
+
+		if (result.rows.length === 0)
+			return res
+				.status(404)
+				.json({ error: `Pool with id ${poolId} not found` });
+
+		const pool = result.rows[0];
+
+		res.status(200).json(pool);
+	} catch (error) {
+		console.log('Error retrieving the pool from the database: ', error);
+		res.status(500).json({ message: 'Failed to retrieve pool' });
+	}
+});
+
 export default router;
