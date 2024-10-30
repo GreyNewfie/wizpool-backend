@@ -27,4 +27,28 @@ router.post('/', async (req, res) => {
 	}
 });
 
+router.get('/:playerId', async (req, res) => {
+	try {
+		const { playerId } = req.params;
+
+		if (!playerId) return res.status(400).send('A player ID is required');
+
+		const result = await turso.execute({
+			sql: 'SELECT * FROM players WHERE id = ?',
+			args: [playerId],
+		});
+
+		if (result.rows.length === 0)
+			return res
+				.status(404)
+				.json({ error: `Player with ID ${playerId} not found` });
+
+		const resultData = result.rows;
+		res.status(200).json(resultData);
+	} catch (error) {
+		console.log(`Error trying to get player: `, error);
+		res.status(500).json({ message: 'Failed to retrieve player' });
+	}
+});
+
 export default router;
