@@ -39,7 +39,7 @@ router.get('/:poolId', async (req, res) => {
 		const { poolId } = req.params;
 
 		if (!poolId)
-			return res.status(400).send('a pool id is required to fetch pool by ID');
+			return res.status(400).send('A pool id is required to fetch pool by ID');
 
 		const result = await turso.execute({
 			sql: 'SELECT * FROM pools WHERE id = ?',
