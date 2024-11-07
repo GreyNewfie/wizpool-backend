@@ -1,3 +1,5 @@
+import { ProcessedTeamData } from './processedTeamData';
+
 export interface PoolData {
 	id: string;
 	name: string;
@@ -20,4 +22,14 @@ export interface PlayerTeamsData {
 	player_id: string;
 	team_key: string;
 	pool_id: string;
+}
+
+export interface CompletePoolData {
+	id: string;
+	name: string;
+	league: string;
+	date_updated: string;
+	date_created: string;
+	players: PlayerData[];
+	teams: { key: string }[];
 }
