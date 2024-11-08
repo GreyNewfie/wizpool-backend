@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { turso } from '../db';
-import { CompletePoolData, PlayerData } from '../types/pool';
+import { PlayerData } from '../types/pool';
 
 const router = Router();
 
@@ -8,6 +8,15 @@ interface PoolPlayer {
 	id: string;
 	teamName: string;
 	teams: any[];
+}
+
+interface CompletePoolData {
+	id: string;
+	name: string;
+	league: string;
+	date_updated: string;
+	date_created: string;
+	players: { id: string; name: string; teams: { key: string }[] }[];
 }
 
 router.get('/:poolId', async (req, res) => {
@@ -72,12 +81,12 @@ router.get('/:poolId', async (req, res) => {
 					return {
 						id: String(player.id),
 						name: String(player.name),
+						teams: playerTeamsResult.rows.map((team) => ({
+							key: String(team.team_key),
+						})),
 					};
 				})
-				.filter((player): player is PlayerData => player !== null), // Use type assertion to filter out null values
-			teams: playerTeamsResult.rows.map((team) => ({
-				key: String(team.team_key),
-			})),
+				.filter((player) => player !== null), // Use type assertion to filter out null values
 		};
 		res.status(200).json(completePoolData);
 	} catch (error) {
