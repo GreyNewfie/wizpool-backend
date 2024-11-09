@@ -78,12 +78,16 @@ router.get('/:poolId', async (req, res) => {
 						return null; // Return null to indicate missing player
 					}
 
+					const playerTeams = playerTeamsResult.rows
+						.filter((team) => team.player_id === player.id)
+						.map((team) => ({
+							key: String(team.team_key),
+						}));
+
 					return {
 						id: String(player.id),
 						name: String(player.name),
-						teams: playerTeamsResult.rows.map((team) => ({
-							key: String(team.team_key),
-						})),
+						teams: playerTeams,
 					};
 				})
 				.filter((player) => player !== null), // Use type assertion to filter out null values
