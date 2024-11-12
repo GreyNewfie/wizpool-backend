@@ -1,12 +1,12 @@
 import express from 'express';
-import apiNbaDataRouter from './routers/nbaData';
-import apiNflDataRouter from './routers/nflData';
-import apiMlbDataRouter from './routers/mlbData';
-import apiPoolDataRouter from './routers/poolData';
-import apiPlayerDataRouter from './routers/playerData';
-import apiPoolPlayersDataRouter from './routers/poolPlayersData';
-import apiPlayerTeamsDataRouter from './routers/playerTeamsData';
-import apiCompletePoolDataRouter from './routers/completePoolData';
+import apiNbaDataRouter from '../routers/nbaData';
+import apiNflDataRouter from '../routers/nflData';
+import apiMlbDataRouter from '../routers/mlbData';
+import apiPoolDataRouter from '../routers/poolData';
+import apiPlayerDataRouter from '../routers/playerData';
+import apiPoolPlayersDataRouter from '../routers/poolPlayersData';
+import apiPlayerTeamsDataRouter from '../routers/playerTeamsData';
+import apiCompletePoolDataRouter from '../routers/completePoolData';
 import cors from 'cors';
 
 const app = express();
@@ -35,7 +35,7 @@ app.get('/api', (req, res) => {
 	res.send("You've reached the Wizpool backend!");
 });
 
-app.listen(process.env.PORT, () => {
+app.listen(process.env.PORT || 3000, () => {
 	console.log('Listening on port ' + process.env.PORT);
 });
 
