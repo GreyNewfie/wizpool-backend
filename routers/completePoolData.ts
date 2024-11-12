@@ -67,6 +67,8 @@ router.get('/:poolId', async (req, res) => {
 			date_created: String(pool.date_created),
 			players: poolPlayersResult.rows
 				.map((poolPlayer) => {
+					console.log('Pool player: ', poolPlayer);
+
 					const player = playersResult.rows.find(
 						(p) => p.id === poolPlayer.player_id
 					);
@@ -84,9 +86,12 @@ router.get('/:poolId', async (req, res) => {
 							key: String(team.team_key),
 						}));
 
+					console.log('Player: ', player);
+
 					return {
 						id: String(player.id),
 						name: String(player.name),
+						teamName: String(poolPlayer.player_team_name),
 						teams: playerTeams,
 					};
 				})
