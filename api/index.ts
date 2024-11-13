@@ -32,11 +32,8 @@ app.use('/api/player_teams', apiPlayerTeamsDataRouter);
 app.use('/api/complete_pools', apiCompletePoolDataRouter);
 
 app.get('/api', (req, res) => {
-	res.send("You've reached the Wizpool backend!");
+	res.send('Exress on Vercel');
 });
 
-app.listen(process.env.PORT || 3000, () => {
-	console.log('Listening on port ' + process.env.PORT);
-});
-
-module.exports = app;
+// Export for Vercel
+export default app;
