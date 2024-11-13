@@ -7,7 +7,7 @@
 		"build": "tsc",
 		"start": "node dist/index.js",
 		"dev": "vercel dev",
-		"vercel-build": "mkdir -p dist && tsc"
+		"vercel-build": "tsc"
 	},
 	"keywords": [],
 	"author": "",
