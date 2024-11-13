@@ -35,5 +35,9 @@ app.get('/api', (req, res) => {
 	res.send('Exress on Vercel');
 });
 
+app.get('/', (req, res) => {
+	res.send("You've reached the Wizpool backend!");
+});
+
 // Export for Vercel
 export default app;
