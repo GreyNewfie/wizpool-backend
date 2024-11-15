@@ -16,7 +16,12 @@ interface CompletePoolData {
 	league: string;
 	date_updated: string;
 	date_created: string;
-	players: { id: string; name: string; teams: { key: string }[] }[];
+	players: {
+		id: string;
+		name: string;
+		teamName?: string;
+		teams: { key: string }[];
+	}[];
 }
 
 router.get('/:poolId', async (req, res) => {
@@ -86,21 +91,99 @@ router.get('/:poolId', async (req, res) => {
 							key: String(team.team_key),
 						}));
 
-					console.log('Player: ', player);
-
 					return {
 						id: String(player.id),
 						name: String(player.name),
-						teamName: String(poolPlayer.player_team_name),
+						teamName: String(poolPlayer.player_team_name) ?? '',
 						teams: playerTeams,
 					};
 				})
-				.filter((player) => player !== null), // Use type assertion to filter out null values
+				.filter(
+					(player): player is NonNullable<typeof player> => player !== null
+				), // Use type assertion to filter out null values
 		};
 		res.status(200).json(completePoolData);
 	} catch (error) {
 		console.error('Error retrieving complete pool data from database:', error);
 		res.status(500).json({ message: 'Failed to retrieve complete pool data' });
+	}
+});
+
+router.post('/', async (req, res) => {
+	try {
+		const poolData = req.body as CompletePoolData;
+
+		if (
+			!poolData.id ||
+			!poolData.name ||
+			!poolData.league ||
+			!poolData.players
+		) {
+			return res
+				.status(400)
+				.json({ error: 'Pool id, name, league, and players are required' });
+		}
+
+		// Format date for database
+		const dateUpdated = new Date()
+			.toISOString()
+			.replace('T', ' ')
+			.split('.')[0];
+
+		// Begin Turso transaction
+		const transaction = await turso.transaction('write');
+
+		try {
+			// 1. Insert pool data
+			await transaction.execute({
+				sql: 'INSERT INTO pools (id, name, league, date_updated) VALUES (?, ?, ?, ?)',
+				args: [poolData.id, poolData.name, poolData.league, dateUpdated],
+			});
+
+			// 2. Process each player
+			for (const player of poolData.players) {
+				// Insert player if not already in database
+				await transaction.execute({
+					sql: 'INSERT OR IGNORE INTO players (id, name) VALUES (?, ?)',
+					args: [player.id, player.name],
+				});
+
+				// Insert pool_player relationship
+				await transaction.execute({
+					sql: 'INSERT INTO pool_players (pool_id, pool_name, player_id, player_team_name) VALUES (?, ?, ?, ?)',
+					args: [poolData.id, poolData.name, player.id, player.teamName || ''],
+				});
+
+				// Insert each player's teams
+				for (const team of player.teams) {
+					await transaction.execute({
+						sql: 'INSERT INTO player_teams (player_id, team_key, pool_id) VALUES (?, ?, ?)',
+						args: [player.id, team.key, poolData.id],
+					});
+				}
+			}
+
+			// Commit transaction
+			await transaction.commit();
+
+			res.status(201).json({
+				message: 'Complete pool data stored successfully',
+				poolId: poolData.id,
+			});
+		} catch (error) {
+			// Rollback on error
+			await transaction.rollback();
+			throw error;
+		} finally {
+			// Always close transaction
+			await transaction.close();
+		}
+	} catch (error) {
+		console.error('Error storing complete pool data:', error);
+		res.status(500).json({
+			error: 'failed to store complete pool data',
+			details: error instanceof Error ? error.message : 'Unknown error',
+		});
 	}
 });
 
