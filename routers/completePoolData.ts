@@ -22,6 +22,7 @@ interface CompletePoolData {
 		teamName?: string;
 		teams: { key: string }[];
 	}[];
+	userId: string;
 }
 
 router.get('/:poolId', async (req, res) => {
@@ -35,25 +36,34 @@ router.get('/:poolId', async (req, res) => {
 		}
 
 		// Fetch all pool data from the database
-		const [poolResult, poolPlayersResult, playersResult, playerTeamsResult] =
-			await Promise.all([
-				turso.execute({
-					sql: 'SELECT * FROM pools WHERE id = ?',
-					args: [poolId],
-				}),
-				turso.execute({
-					sql: 'SELECT * FROM pool_players WHERE pool_id = ?',
-					args: [poolId],
-				}),
-				turso.execute({
-					sql: 'SELECT * FROM players WHERE id IN (SELECT player_id FROM pool_players WHERE pool_id = ?)',
-					args: [poolId],
-				}),
-				turso.execute({
-					sql: 'SELECT * FROM player_teams WHERE player_id IN (SELECT player_id FROM pool_players WHERE pool_id = ?)',
-					args: [poolId],
-				}),
-			]);
+		const [
+			poolResult,
+			poolPlayersResult,
+			playersResult,
+			playerTeamsResult,
+			userPoolsResult,
+		] = await Promise.all([
+			turso.execute({
+				sql: 'SELECT * FROM pools WHERE id = ?',
+				args: [poolId],
+			}),
+			turso.execute({
+				sql: 'SELECT * FROM pool_players WHERE pool_id = ?',
+				args: [poolId],
+			}),
+			turso.execute({
+				sql: 'SELECT * FROM players WHERE id IN (SELECT player_id FROM pool_players WHERE pool_id = ?)',
+				args: [poolId],
+			}),
+			turso.execute({
+				sql: 'SELECT * FROM player_teams WHERE player_id IN (SELECT player_id FROM pool_players WHERE pool_id = ?)',
+				args: [poolId],
+			}),
+			turso.execute({
+				sql: 'SELECT * FROM user_pools WHERE pool_id = ?',
+				args: [poolId],
+			}),
+		]);
 
 		// Handle missing pool
 		if (poolResult.rows.length === 0) {
@@ -102,7 +112,9 @@ router.get('/:poolId', async (req, res) => {
 				.filter(
 					(player): player is NonNullable<typeof player> => player !== null
 				),
+			userId: String(userPoolsResult.rows[0].user_id),
 		};
+		console.log('userPoolsResult: ', userPoolsResult.rows[0]);
 		res.status(200).json(completePoolData);
 	} catch (error) {
 		console.error('Error retrieving complete pool data from database:', error);
@@ -121,11 +133,12 @@ router.post('/', async (req, res) => {
 			!poolData.id ||
 			!poolData.name ||
 			!poolData.league ||
-			!poolData.players
+			!poolData.players ||
+			!poolData.userId
 		) {
-			return res
-				.status(400)
-				.json({ error: 'Pool id, name, league, and players are required' });
+			return res.status(400).json({
+				error: 'Pool id, name, league, players, and userId are required',
+			});
 		}
 
 		// Format date for database
@@ -168,6 +181,12 @@ router.post('/', async (req, res) => {
 					});
 				}
 			}
+
+			// 4. Insert user_pools relationship
+			await transaction.execute({
+				sql: 'INSERT INTO user_pools (user_id, pool_id) VALUES (?, ?)',
+				args: [poolData.userId, poolData.id],
+			});
 
 			// Commit transaction
 			await transaction.commit();
