@@ -98,14 +98,18 @@ router.get('/:poolId', async (req, res) => {
 						teams: playerTeams,
 					};
 				})
+				// Use type assertion to filter out null values
 				.filter(
 					(player): player is NonNullable<typeof player> => player !== null
-				), // Use type assertion to filter out null values
+				),
 		};
 		res.status(200).json(completePoolData);
 	} catch (error) {
 		console.error('Error retrieving complete pool data from database:', error);
-		res.status(500).json({ message: 'Failed to retrieve complete pool data' });
+		res.status(500).json({
+			error: 'Failed to retrieve complete pool data',
+			details: error instanceof Error ? error.message : 'Unknown error',
+		});
 	}
 });
 
@@ -140,15 +144,17 @@ router.post('/', async (req, res) => {
 				args: [poolData.id, poolData.name, poolData.league, dateUpdated],
 			});
 
-			// 2. Process each player
+			// 2. Insert all players
 			for (const player of poolData.players) {
 				// Insert player if not already in database
 				await transaction.execute({
 					sql: 'INSERT OR IGNORE INTO players (id, name) VALUES (?, ?)',
 					args: [player.id, player.name],
 				});
+			}
 
-				// Insert pool_player relationship
+			// 3. Then create pool_player relationship and team assignments
+			for (const player of poolData.players) {
 				await transaction.execute({
 					sql: 'INSERT INTO pool_players (pool_id, pool_name, player_id, player_team_name) VALUES (?, ?, ?, ?)',
 					args: [poolData.id, poolData.name, player.id, player.teamName || ''],
