@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { turso } from '../db';
-import { PlayerData } from '../types/pool';
 
 const router = Router();
 
@@ -14,8 +13,8 @@ interface CompletePoolData {
 	id: string;
 	name: string;
 	league: string;
-	date_updated: string;
-	date_created: string;
+	dateUpdated: string;
+	dateCreated: string;
 	players: {
 		id: string;
 		name: string;
@@ -78,8 +77,8 @@ router.get('/:poolId', async (req, res) => {
 			id: String(pool.id),
 			name: String(pool.name),
 			league: String(pool.league),
-			date_updated: String(pool.date_updated),
-			date_created: String(pool.date_created),
+			dateUpdated: String(pool.date_updated),
+			dateCreated: String(pool.date_created),
 			players: poolPlayersResult.rows
 				.map((poolPlayer) => {
 					console.log('Pool player: ', poolPlayer);

@@ -60,4 +60,39 @@ router.get('/:poolId', async (req, res) => {
 	}
 });
 
+router.get('/user/:userId', async (req, res) => {
+	try {
+		const { userId } = req.params;
+
+		if (!userId)
+			return res.status(400).send('A user ID is required to get user pools');
+
+		// Get all pools for the user
+		const userPoolsResult = await turso.execute({
+			sql: 'SELECT * FROM pools WHERE id IN (SELECT pool_id FROM user_pools WHERE user_id = ?)',
+			args: [userId],
+		});
+
+		// If no pools are found for the user, return an empty array
+		if (userPoolsResult.rows.length === 0)
+			return res
+				.status(200)
+				.json({ message: 'No pools found for user', pools: [] });
+
+		// Get all pools for the user
+		const pools = await userPoolsResult.rows.map((pool) => ({
+			id: String(pool.id),
+			name: String(pool.name),
+			league: String(pool.league),
+			dateUpdated: String(pool.date_updated),
+			dateCreated: String(pool.date_created),
+		}));
+
+		res.status(200).json(pools);
+	} catch (error) {
+		console.error('Error retrieving user pools from database: ', error);
+		res.status(500);
+	}
+});
+
 export default router;
