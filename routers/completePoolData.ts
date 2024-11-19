@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { turso } from '../db';
+import getLeagueData from '../services/leagueDataService';
+import { ProcessedTeamData } from '../types/processedTeamData';
 
 const router = Router();
 
@@ -73,6 +75,10 @@ router.get('/:poolId', async (req, res) => {
 
 		// Create the complete pool object
 		const pool = poolResult.rows[0];
+
+		// Fetch league data
+		const leagueData = await getLeagueData(String(pool.league));
+
 		const completePoolData: CompletePoolData = {
 			id: String(pool.id),
 			name: String(pool.name),
@@ -81,10 +87,8 @@ router.get('/:poolId', async (req, res) => {
 			dateCreated: String(pool.date_created),
 			players: poolPlayersResult.rows
 				.map((poolPlayer) => {
-					console.log('Pool player: ', poolPlayer);
-
 					const player = playersResult.rows.find(
-						(p) => p.id === poolPlayer.player_id
+						(player) => player.id === poolPlayer.player_id
 					);
 
 					if (!player) {
@@ -96,15 +100,37 @@ router.get('/:poolId', async (req, res) => {
 
 					const playerTeams = playerTeamsResult.rows
 						.filter((team) => team.player_id === player.id)
-						.map((team) => ({
-							key: String(team.team_key),
-						}));
+						.map((team) => {
+							const teamData = (leagueData as ProcessedTeamData[]).find(
+								(data) => data.key === team.team_key
+							);
+							return {
+								key: String(team.team_key),
+								wins: teamData?.wins || 0,
+								losses: teamData?.losses || 0,
+								conference: teamData?.conference || '',
+								division: teamData?.division || '',
+								city: teamData?.city || '',
+								name: teamData?.name || '',
+							};
+						});
+
+					const totalWins = playerTeams.reduce(
+						(sum, team) => sum + (Number(team.wins) || 0),
+						0
+					);
+					const totalLosses = playerTeams.reduce(
+						(sum, team) => sum + (Number(team.losses) || 0),
+						0
+					);
 
 					return {
 						id: String(player.id),
 						name: String(player.name),
 						teamName: String(poolPlayer.player_team_name) ?? '',
 						teams: playerTeams,
+						totalWins,
+						totalLosses,
 					};
 				})
 				// Use type assertion to filter out null values

@@ -10,12 +10,7 @@ export default async function processData(
 		await fetchExternalData(apiUrl);
 	let processedData: ProcessedTeamData[] = [];
 
-	if (league === 'nba') {
-	}
-
-	if (league === 'nfl') {
-	}
-
+	// Process data based on league
 	switch (league) {
 		case 'nba':
 			const nbaData = rawData as NBATeamData[];
