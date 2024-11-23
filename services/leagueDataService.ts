@@ -10,18 +10,18 @@ export default async function getLeagueData(league: string) {
 
 		// If there is existing data check if it was updated today
 		if (existingData.rows.length > 0) {
-			const lastUpdate = existingData.rows[0].date_udpated;
+			const lastUpdate = existingData.rows[0].date_updated;
 
 			// Type guard to check if lastUpdated is a string to pass to new Date
 			if (typeof lastUpdate === 'string') {
-				const lastUpadtedDate = new Date(lastUpdate).toLocaleDateString(
+				const lastUpdatedDate = new Date(lastUpdate).toLocaleDateString(
 					'en-US'
 				);
 
 				const today = new Date().toLocaleDateString('en-US');
 
 				// If the data was updated today, return the existing data
-				if (lastUpadtedDate === today) {
+				if (lastUpdatedDate === today) {
 					console.log('League data is up to date and retrieved from db');
 					return existingData.rows;
 				}
