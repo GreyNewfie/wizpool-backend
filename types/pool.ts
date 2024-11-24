@@ -1,25 +1,46 @@
 import { ProcessedTeamData } from './processedTeamData';
 
+// Core pool data
 export interface PoolData {
 	id: string;
 	name: string;
 	league: string;
 }
 
+// Basic player data
 export interface PlayerData {
 	id: string;
 	name: string;
 }
 
-export interface PoolPlayersData {
-	pool_id: string;
-	pool_name: string;
-	player_id: string;
-	player_team_name: string;
+// Represent a single team with league data
+export interface Team {
+	key: string;
+	wins: number;
+	losses: number;
+	conference: string;
+	division: string;
+	city: string;
+	name: string;
 }
 
-export interface PlayerTeamsData {
-	player_id: string;
-	team_key: string;
-	pool_id: string;
+// Represents a player in a pool with all associated teams
+export interface Player {
+	id: string;
+	name: string;
+	teamName: string;
+	teams: Team[];
+	totalWins: number;
+	totalLosses: number;
+}
+
+// Compelete pool with players and their teams with league data
+export interface CompletePoolData {
+	id: string;
+	name: string;
+	league: string;
+	dateUpdated: string;
+	dateCreated: string;
+	players: Player[];
+	userId: string;
 }
