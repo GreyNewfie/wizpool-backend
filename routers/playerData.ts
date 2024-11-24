@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { PlayerData } from '../types/pool';
+import { PlayerData } from '../types';
 import { turso } from '../db';
 
 const router = Router();
