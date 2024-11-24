@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { turso } from '../db';
 import getLeagueData from '../services/leagueDataService';
-import { ProcessedTeamData } from '../types/processedTeamData';
+import { FlatData, LeagueData, Team } from '../types';
 
 const router = Router();
 
@@ -37,109 +37,128 @@ router.get('/:poolId', async (req, res) => {
 		}
 
 		// Fetch all pool data from the database
-		const [
-			poolResult,
-			poolPlayersResult,
-			playersResult,
-			playerTeamsResult,
-			userPoolsResult,
-		] = await Promise.all([
-			turso.execute({
-				sql: 'SELECT * FROM pools WHERE id = ?',
-				args: [poolId],
-			}),
-			turso.execute({
-				sql: 'SELECT * FROM pool_players WHERE pool_id = ?',
-				args: [poolId],
-			}),
-			turso.execute({
-				sql: 'SELECT * FROM players WHERE id IN (SELECT player_id FROM pool_players WHERE pool_id = ?)',
-				args: [poolId],
-			}),
-			turso.execute({
-				sql: 'SELECT * FROM player_teams WHERE player_id IN (SELECT player_id FROM pool_players WHERE pool_id = ?)',
-				args: [poolId],
-			}),
-			turso.execute({
-				sql: 'SELECT * FROM user_pools WHERE pool_id = ?',
-				args: [poolId],
-			}),
-		]);
+		const combinedQuery = `
+		SELECT 
+			pools.id AS pool_id,
+			pools.name AS pool_name,
+			pools.league,
+			pools.date_updated,
+			pools.date_created,
+			pool_players.player_id,
+			players.name AS player_name,
+			pool_players.player_team_name,
+			player_teams.team_key,
+			user_pools.user_id
+		FROM 
+			pools
+		LEFT JOIN 
+			pool_players ON pools.id = pool_players.pool_id
+		LEFT JOIN 
+			players ON pool_players.player_id = players.id
+		LEFT JOIN 
+			player_teams ON players.id = player_teams.player_id AND player_teams.pool_id = pools.id
+		LEFT JOIN 
+			user_pools ON pools.id = user_pools.pool_id
+		WHERE 
+			pools.id = ?;
+		`;
+		const result = await turso.execute({
+			sql: combinedQuery,
+			args: [poolId],
+		});
 
 		// Handle missing pool
-		if (poolResult.rows.length === 0) {
+		if (result.rows.length === 0) {
 			return res
 				.status(404)
 				.json({ error: `Pool with id ${poolId} not found` });
 		}
 
-		// Create the complete pool object
-		const pool = poolResult.rows[0];
+		const flatData: FlatData[] = result.rows.map((row) => ({
+			pool_id: String(row.pool_id),
+			pool_name: String(row.pool_name),
+			league: String(row.league),
+			date_updated: String(row.date_updated),
+			date_created: String(row.date_created),
+			player_id: String(row.player_id),
+			player_name: String(row.player_name),
+			player_team_name: String(row.player_team_name),
+			team_key: String(row.team_key),
+			user_id: String(row.user_id),
+		}));
 
-		// Fetch league data
-		const leagueData = await getLeagueData(String(pool.league));
+		const transformToNestedStructure = (
+			flatData: FlatData[],
+			leagueData: LeagueData[]
+		) => {
+			const playerMap = new Map();
 
-		const completePoolData: CompletePoolData = {
-			id: String(pool.id),
-			name: String(pool.name),
-			league: String(pool.league),
-			dateUpdated: String(pool.date_updated),
-			dateCreated: String(pool.date_created),
-			players: poolPlayersResult.rows
-				.map((poolPlayer) => {
-					const player = playersResult.rows.find(
-						(player) => player.id === poolPlayer.player_id
-					);
+			flatData.forEach((row: any) => {
+				// Add player if not already in the map
+				if (!playerMap.has(row.player_id)) {
+					playerMap.set(row.player_id, {
+						id: row.player_id,
+						name: row.player_name,
+						teamName: row.player_team_name,
+						teams: [],
+					});
 
-					if (!player) {
-						console.error(
-							`Player with id ${poolPlayer.player_id} not found in players table`
+					// Add league data to team then add to player
+					if (row.team_key) {
+						const teamData = leagueData.find(
+							(data) => data.key === row.team_key
 						);
-						return null; // Return null to indicate missing player
-					}
 
-					const playerTeams = playerTeamsResult.rows
-						.filter((team) => team.player_id === player.id)
-						.map((team) => {
-							const teamData = (leagueData as ProcessedTeamData[]).find(
-								(data) => data.key === team.team_key
-							);
-							return {
-								key: String(team.team_key),
-								wins: teamData?.wins || 0,
-								losses: teamData?.losses || 0,
-								conference: teamData?.conference || '',
-								division: teamData?.division || '',
-								city: teamData?.city || '',
-								name: teamData?.name || '',
-							};
+						if (!teamData)
+							console.error(`No team data for team with key ${row.team_key}`);
+
+						playerMap.get(row.player_id)?.teams.push({
+							key: row.team_key,
+							wins: teamData?.wins,
+							losses: teamData?.losses,
+							conference: teamData?.conference,
+							division: teamData?.division,
+							city: teamData?.city,
+							name: teamData?.name,
 						});
+					}
+				}
+			});
 
-					const totalWins = playerTeams.reduce(
-						(sum, team) => sum + (Number(team.wins) || 0),
+			// Add total wins to player
+			const playersWithTotalWinsLosses = Array.from(playerMap.values()).map(
+				(player) => {
+					const totalWins = player.teams.reduce(
+						(total: number, team: Team) => total + team.wins,
 						0
 					);
-					const totalLosses = playerTeams.reduce(
-						(sum, team) => sum + (Number(team.losses) || 0),
+					const totalLosses = player.teams.reduce(
+						(total: number, team: Team) => total + team.wins,
 						0
 					);
 
-					return {
-						id: String(player.id),
-						name: String(player.name),
-						teamName: String(poolPlayer.player_team_name) ?? '',
-						teams: playerTeams,
-						totalWins,
-						totalLosses,
-					};
-				})
-				// Use type assertion to filter out null values
-				.filter(
-					(player): player is NonNullable<typeof player> => player !== null
-				),
-			userId: String(userPoolsResult.rows[0].user_id),
+					return { ...player, totalWins: totalWins, totalLosses: totalLosses };
+				}
+			);
+
+			// Create the complete pool data object
+			const completePoolData: CompletePoolData = {
+				id: flatData[0].pool_id,
+				name: flatData[0].pool_name,
+				league: flatData[0].league,
+				dateUpdated: flatData[0].date_updated,
+				dateCreated: flatData[0].date_created,
+				players: playersWithTotalWinsLosses,
+				userId: flatData[0].user_id,
+			};
+
+			return completePoolData;
 		};
-		console.log('userPoolsResult: ', userPoolsResult.rows[0]);
+
+		const leagueData = await getLeagueData(String(result.rows[0].league));
+
+		const completePoolData = transformToNestedStructure(flatData, leagueData);
+
 		res.status(200).json(completePoolData);
 	} catch (error) {
 		console.error('Error retrieving complete pool data from database:', error);
