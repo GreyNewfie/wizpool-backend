@@ -11,8 +11,6 @@ export default async function getLeagueData(
 			args: [],
 		});
 
-		const today = new Date().toLocaleDateString('en-US');
-
 		// Cast the rows to LeagueData[]
 		const existingLeagueData: LeagueData[] = existingData.rows.map(
 			(row: any) => ({
@@ -29,16 +27,21 @@ export default async function getLeagueData(
 
 		// If there is existing data check if it was updated today
 		if (existingLeagueData.length > 0) {
+			console.log('Existing data found', existingLeagueData[0]);
+
 			const lastUpdate = existingLeagueData[0].date_updated;
 
 			// Type guard to check if lastUpdated is a string to pass to new Date
 			if (typeof lastUpdate === 'string') {
-				const lastUpdatedDate = new Date(lastUpdate).toLocaleDateString(
-					'en-US'
+				const lastUpdatedDate = new Date(lastUpdate);
+				const today = new Date();
+
+				console.log(
+					`Last updated date: ${lastUpdatedDate.toLocaleDateString('en-US')}, today's date: ${today.toLocaleDateString('en-US')}`
 				);
 
 				// If the data was updated today, return the existing data
-				if (lastUpdatedDate === today) {
+				if (lastUpdatedDate.toDateString() === today.toDateString()) {
 					console.log('League data is up to date and retrieved from db');
 					return existingLeagueData;
 				}
@@ -89,6 +92,7 @@ export default async function getLeagueData(
 			}));
 		}
 
+		const today = new Date().toLocaleDateString('en-US');
 		const leagueData = mapProcessTeamDatatoLeagueData(newData, today);
 
 		console.log(`${league.toUpperCase()} data is updated and stored in db`);
