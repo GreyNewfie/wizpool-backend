@@ -1,16 +1,35 @@
 import { turso } from '../db';
 import processData from './dataProcessor';
+import { LeagueData, ProcessedTeamData } from '../types';
 
-export default async function getLeagueData(league: string) {
+export default async function getLeagueData(
+	league: string
+): Promise<LeagueData[]> {
 	try {
 		const existingData = await turso.execute({
 			sql: `SELECT * FROM ${league}_data`,
 			args: [],
 		});
 
+		const today = new Date().toLocaleDateString('en-US');
+
+		// Cast the rows to LeagueData[]
+		const existingLeagueData: LeagueData[] = existingData.rows.map(
+			(row: any) => ({
+				key: row.key,
+				city: row.city,
+				name: row.name,
+				conference: row.conference,
+				division: row.division,
+				wins: row.wins,
+				losses: row.losses,
+				date_updated: row.date_updated,
+			})
+		);
+
 		// If there is existing data check if it was updated today
-		if (existingData.rows.length > 0) {
-			const lastUpdate = existingData.rows[0].date_updated;
+		if (existingLeagueData.length > 0) {
+			const lastUpdate = existingLeagueData[0].date_updated;
 
 			// Type guard to check if lastUpdated is a string to pass to new Date
 			if (typeof lastUpdate === 'string') {
@@ -18,12 +37,10 @@ export default async function getLeagueData(league: string) {
 					'en-US'
 				);
 
-				const today = new Date().toLocaleDateString('en-US');
-
 				// If the data was updated today, return the existing data
 				if (lastUpdatedDate === today) {
 					console.log('League data is up to date and retrieved from db');
-					return existingData.rows;
+					return existingLeagueData;
 				}
 			}
 		}
@@ -36,7 +53,7 @@ export default async function getLeagueData(league: string) {
 			);
 
 		// Fetch and process new data
-		const newData = await processData(league, apiUrl);
+		const newData: ProcessedTeamData[] = await processData(league, apiUrl);
 		if (!newData)
 			throw new Error(`${league.toUpperCase()} data processing failed`);
 
@@ -62,9 +79,21 @@ export default async function getLeagueData(league: string) {
 			});
 		}
 
+		function mapProcessTeamDatatoLeagueData(
+			processedTeamData: ProcessedTeamData[],
+			dateUpdated: string
+		): LeagueData[] {
+			return processedTeamData.map((team) => ({
+				...team,
+				date_updated: dateUpdated,
+			}));
+		}
+
+		const leagueData = mapProcessTeamDatatoLeagueData(newData, today);
+
 		console.log(`${league.toUpperCase()} data is updated and stored in db`);
 		// Return the new data
-		return newData;
+		return leagueData;
 	} catch (error) {
 		console.error(`Error in getLeagueData for ${league}:`, error);
 		throw error;
