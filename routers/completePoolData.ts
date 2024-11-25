@@ -102,26 +102,24 @@ router.get('/:poolId', async (req, res) => {
 						teamName: row.player_team_name,
 						teams: [],
 					});
+				}
 
-					// Add league data to team then add to player
-					if (row.team_key) {
-						const teamData = leagueData.find(
-							(data) => data.key === row.team_key
-						);
+				// Add league data to team then add to player
+				if (row.team_key) {
+					const teamData = leagueData.find((data) => data.key === row.team_key);
 
-						if (!teamData)
-							console.error(`No team data for team with key ${row.team_key}`);
+					if (!teamData)
+						console.error(`No team data for team with key ${row.team_key}`);
 
-						playerMap.get(row.player_id)?.teams.push({
-							key: row.team_key,
-							wins: teamData?.wins,
-							losses: teamData?.losses,
-							conference: teamData?.conference,
-							division: teamData?.division,
-							city: teamData?.city,
-							name: teamData?.name,
-						});
-					}
+					playerMap.get(row.player_id)?.teams.push({
+						key: row.team_key,
+						wins: teamData?.wins,
+						losses: teamData?.losses,
+						conference: teamData?.conference,
+						division: teamData?.division,
+						city: teamData?.city,
+						name: teamData?.name,
+					});
 				}
 			});
 
