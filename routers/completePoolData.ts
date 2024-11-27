@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { turso } from '../db';
 import getLeagueData from '../services/leagueDataService';
 import { FlatData, LeagueData, Team } from '../types';
+import { requireAuth } from '@clerk/express';
 
 const router = Router();
 
@@ -26,7 +27,12 @@ interface CompletePoolData {
 	userId: string;
 }
 
-router.get('/:poolId', async (req, res) => {
+router.get('/:poolId', requireAuth(), async (req, res) => {
+	// console.log('Auth object:', req.auth);
+	// console.log('TypeScript knows about req.auth:', req.auth?.userId);
+	const { userId } = req.auth;
+	console.log('User ID:', userId);
+
 	try {
 		const { poolId } = req.params;
 
