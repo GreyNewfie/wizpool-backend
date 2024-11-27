@@ -7,6 +7,7 @@ import apiPlayerDataRouter from '../routers/playerData';
 import apiPoolPlayersDataRouter from '../routers/poolPlayersData';
 import apiPlayerTeamsDataRouter from '../routers/playerTeamsData';
 import apiCompletePoolDataRouter from '../routers/completePoolData';
+import { clerkMiddleware } from '@clerk/express';
 import cors from 'cors';
 
 const app = express();
@@ -19,8 +20,13 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-
 app.use(express.json());
+app.use(clerkMiddleware());
+
+app.get('/api/test-auth', (req, res) => {
+	console.log('Auth:', req.auth);
+	res.json(req.auth);
+});
 
 app.use('/api/nba_data', apiNbaDataRouter);
 app.use('/api/nfl_data', apiNflDataRouter);
