@@ -1,6 +1,7 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { turso } from '../db';
 import { PoolData } from '../types';
+import { AuthenticatedRequest } from '../types/index';
 
 const router = Router();
 
@@ -10,7 +11,13 @@ function formatISODate(isoDateString: string) {
 }
 
 router.post('/', async (req, res) => {
-	try {
+	const authReq = req as AuthenticatedRequest;
+
+	if (!authReq.auth.userId) {
+	  return res.status(401).json({ error: 'Unauthorized' });
+	}
+
+	try {	  
 		const { id, name, league } = req.body as PoolData;
 
 		if (!id || !name || !league) {
@@ -34,7 +41,13 @@ router.post('/', async (req, res) => {
 	}
 });
 
-router.get('/:poolId', async (req, res) => {
+router.get('/:poolId', async (req: Request, res: Response) => {
+	const authReq = req as AuthenticatedRequest;
+
+	if (!authReq.auth.userId) {
+	  return res.status(401).json({ error: 'Unauthorized' });
+	}
+
 	try {
 		const { poolId } = req.params;
 
@@ -60,7 +73,13 @@ router.get('/:poolId', async (req, res) => {
 	}
 });
 
-router.get('/user/:userId', async (req, res) => {
+router.get('/user/:userId', async (req: Request, res: Response) => {
+	const authReq = req as AuthenticatedRequest;
+
+	if (!authReq.auth.userId) {
+	  return res.status(401).json({ error: 'Unauthorized' });
+	}
+
 	try {
 		const { userId } = req.params;
 
