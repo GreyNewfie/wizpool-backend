@@ -30,7 +30,6 @@ const router = Router();
 router.get('/:poolId', 
   async (req: Request, res: Response) => {
   const authReq = req as AuthenticatedRequest;
-  console.log('Auth:', authReq.auth);
 
   if (!authReq.auth.userId) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -180,6 +179,12 @@ router.get('/:poolId',
 });
 
 router.post('/', async (req, res) => {
+  const authReq = req as AuthenticatedRequest;
+
+  if (!authReq.auth.userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   try {
     const poolData = req.body as CompletePoolData;
 
