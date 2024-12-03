@@ -114,4 +114,51 @@ router.get('/user/:userId', async (req: Request, res: Response) => {
 	}
 });
 
+router.delete('/:poolId', async (req: Request, res: Response) => {
+	const authReq = req as AuthenticatedRequest;
+
+	if (!authReq.auth.userId) 
+		return res.status(401).json({error: 'Unauthorized'})
+	
+	try {
+		const { poolId } = req.params;
+
+		if (!poolId) 
+			return res.status(400). json({error: 'A pool ID is required'})
+
+		// Get all of the player IDs associated with this pool
+		const playerIdsResult = await turso.execute({
+			sql: 'SELECT player_id FROM pool_players WHERE pool_id = ?',
+			args: [
+				poolId,
+			]
+		})
+
+		if (playerIdsResult.rows.length > 0) {
+			// Create an array of player IDs
+			const playerIds = playerIdsResult.rows.map(row => row.player_id);
+
+			// Delete the players from the players table
+			await turso.execute({
+				sql: `DELETE FROM players WHERE id IN (${playerIds.map(() => '?').join(',')})`,
+				args: playerIds,
+			})
+		}
+
+		// Finally, delete the pool
+		const deletePoolResult = await turso.execute({
+			sql: 'DELETE FROM pools WHERE id = ?',
+			args: [poolId],
+		})
+
+		if (deletePoolResult.rowsAffected === 0) 
+			return res.status(404).json({error: `Pool with id ${poolId} not found`});
+		
+		res.status(200).json({message: `Pool ${poolId} and all associated data has been deleted successfully`})
+	} catch (error) {
+		console.error('Error deleting pool from database: ', error);
+        res.status(500).json({ error: 'Failed to delete pool' });
+	}
+})
+
 export default router;
