@@ -288,21 +288,52 @@ router.put('/:poolId', async (req: Request, res: Response) => {
 		const transaction = await turso.transaction('write');
 
 		try {
+			const existingPlayersResult = await transaction.execute({
+				sql:
+					'SELECT * FROM players WHERE id IN (' +
+					poolData.players.map(() => '?').join(',') +
+					')',
+				args: poolData.players.map((player) => player.id),
+			});
+
+			const existingPlayers = new Map(
+				existingPlayersResult.rows.map((player) => [player.id, player])
+			);
+
 			// Update players and their teams
 			for (const player of poolData.players) {
-				// Update player if exists
+				// Check if player is already stored in db
+				if (!existingPlayers.has(player.id)) {
+					// If player doesn't exist insert them
+					console.log(`New player ${player.name} added to pool`);
+
+					await transaction.execute({
+						sql: 'INSERT INTO players (id, name) VALUES (?, ?)',
+						args: [player.id, player.name],
+					});
+				} else {
+					// Update player if exists
+					console.log(`Existing player ${player.name} has been updated.`);
+
+					await transaction.execute({
+						sql: 'UPDATE players SET name = ? WHERE id = ?',
+						args: [player.name, player.id],
+					});
+				}
+
+				// Ensure player is associated with the pool
 				await transaction.execute({
-					sql: 'UPDATE players SET name = ? WHERE id = ?',
-					args: [player.name, player.id],
+					sql: 'INSERT INTO pool_players (pool_id, pool_name, player_id, player_team_name) VALUES (?, ?, ?, ?) ON CONFLICT (pool_id, player_id) DO UPDATE SET player_team_name = ?',
+					args: [
+						poolId,
+						poolData.name,
+						player.id,
+						player.teamName || '',
+						player.teamName || '',
+					],
 				});
 
-				// Update pool_player relationship
-				await transaction.execute({
-					sql: 'UPDATE pool_players SET player_team_name = ? WHERE pool_id = ? AND player_id = ?',
-					args: [player.teamName || '', poolId, player.id],
-				});
-
-				// Get the current teams assocaited with the player
+				// Get the current teams associated with the player
 				const currentTeamsResult = await transaction.execute({
 					sql: 'SELECT * FROM player_teams WHERE player_id = ?',
 					args: [player.id],
@@ -327,10 +358,13 @@ router.put('/:poolId', async (req: Request, res: Response) => {
 
 				// Update each player's teams
 				for (const team of player.teams) {
-					await transaction.execute({
-						sql: 'INSERT INTO player_teams (player_id, team_key, pool_id) VALUES (?, ?, ?) ON CONFLICT (player_id, team_key) DO UPDATE SET pool_id =?',
-						args: [player.id, team.key, poolId, poolId],
-					});
+					if (team.key) {
+						// Check for valid team key
+						await transaction.execute({
+							sql: 'INSERT INTO player_teams (player_id, team_key, pool_id) VALUES (?, ?, ?) ON CONFLICT (player_id, team_key) DO UPDATE SET pool_id =?',
+							args: [player.id, team.key, poolId, poolId],
+						});
+					}
 				}
 			}
 
@@ -350,7 +384,7 @@ router.put('/:poolId', async (req: Request, res: Response) => {
 	} catch (error) {
 		console.error('Error updating pool data: ', error);
 		res.status(500).json({
-			error: 'Failed to udpate complete pool data',
+			error: 'Failed to update complete pool data',
 			details: error instanceof Error ? error.message : 'Unknown error',
 		});
 	}
