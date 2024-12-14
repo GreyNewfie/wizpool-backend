@@ -119,46 +119,75 @@ router.delete('/:poolId', async (req: Request, res: Response) => {
 
 	if (!authReq.auth.userId) 
 		return res.status(401).json({error: 'Unauthorized'})
+
+	const { poolId } = req.params;
+
+	if (!poolId) 
+		return res.status(400).json({error: 'A pool ID is required'})
 	
 	try {
-		const { poolId } = req.params;
+		const transaction = await turso.transaction('write');
 
-		if (!poolId) 
-			return res.status(400). json({error: 'A pool ID is required'})
+		try {
+			// 1. First delete pool_players entries
+			await transaction.execute({
+				sql: 'DELETE FROM pool_players WHERE pool_id = ?',
+				args: [poolId],
+			});
 
-		// Get all of the player IDs associated with this pool
-		const playerIdsResult = await turso.execute({
-			sql: 'SELECT player_id FROM pool_players WHERE pool_id = ?',
-			args: [
-				poolId,
-			]
-		})
+			// 2. Delete player_teams entries
+			await transaction.execute({
+				sql: 'DELETE FROM player_teams WHERE pool_id = ?',
+				args: [poolId],
+			});
 
-		if (playerIdsResult.rows.length > 0) {
-			// Create an array of player IDs
-			const playerIds = playerIdsResult.rows.map(row => row.player_id);
+			// 3. Delete user_pools entries
+			await transaction.execute({
+				sql: 'DELETE FROM user_pools WHERE pool_id = ?',
+				args: [poolId],
+			});
 
-			// Delete the players from the players table
-			await turso.execute({
-				sql: `DELETE FROM players WHERE id IN (${playerIds.map(() => '?').join(',')})`,
-				args: playerIds,
-			})
+			// 4. Get all player IDs associated with this pool (for cleanup)
+			const playerIdsResult = await transaction.execute({
+				sql: 'SELECT DISTINCT p.id FROM players p LEFT JOIN pool_players pp ON p.id = pp.player_id WHERE pp.pool_id IS NULL',
+				args: [],
+			});
+
+			// 5. Delete orphaned players (players not associated with any other pools)
+			if (playerIdsResult.rows.length > 0) {
+				const playerIds = playerIdsResult.rows.map(row => row.id);
+				await transaction.execute({
+					sql: `DELETE FROM players WHERE id IN (${playerIds.map(() => '?').join(',')})`,
+					args: playerIds,
+				});
+			}
+
+			// 6. Finally, delete the pool
+			const deletePoolResult = await transaction.execute({
+				sql: 'DELETE FROM pools WHERE id = ?',
+				args: [poolId],
+			});
+
+			if (deletePoolResult.rowsAffected === 0) 
+				return res.status(404).json({error: `Pool with id ${poolId} not found`});
+			
+			// Commit the transaction
+			await transaction.commit();
+			
+			res.status(200).json({
+				message: `Pool ${poolId} and all associated data has been deleted successfully`
+			});
+		} catch (transactionError) {
+			await transaction.rollback();
+			throw transactionError;
 		}
-
-		// Finally, delete the pool
-		const deletePoolResult = await turso.execute({
-			sql: 'DELETE FROM pools WHERE id = ?',
-			args: [poolId],
-		})
-
-		if (deletePoolResult.rowsAffected === 0) 
-			return res.status(404).json({error: `Pool with id ${poolId} not found`});
-		
-		res.status(200).json({message: `Pool ${poolId} and all associated data has been deleted successfully`})
 	} catch (error) {
 		console.error('Error deleting pool from database: ', error);
-        res.status(500).json({ error: 'Failed to delete pool' });
+		res.status(500).json({ 
+			error: 'Failed to delete pool', 
+			details: error instanceof Error ? error.message : 'Unknown error' 
+		});
 	}
-})
+});
 
 export default router;
