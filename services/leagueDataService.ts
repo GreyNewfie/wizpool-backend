@@ -32,13 +32,12 @@ export default async function getLeagueData(
 
 			// Type guard to check if lastUpdated is a string to pass to new Date
 			if (typeof lastUpdate === 'string') {
-				const lastUpdatedDate = new Date(lastUpdate)
-					.toISOString()
-					.split('T')[0]; // Get date in UTC
-				const today = new Date().toISOString().split('T')[0]; // Get today in UTC
+				// Extract just the date part (YYYY-MM-DD) from the stored timestamp
+				const lastUpdatedDate = lastUpdate.split(' ')[0];
+				const today = new Date().toISOString().split('T')[0];
 
-				console.log('Last Updated Date (UTC):', lastUpdatedDate);
-				console.log('Today (UTC):', today);
+				console.log('Last Updated Date:', lastUpdatedDate);
+				console.log('Today:', today);
 
 				// If the data was updated today, return the existing data
 				if (lastUpdatedDate === today) {
