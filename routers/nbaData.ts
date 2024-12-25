@@ -1,10 +1,17 @@
 require('dotenv').config();
 import { Router } from 'express';
 import getLeagueData from '../services/leagueDataService';
+import { AuthenticatedRequest } from '../types/auth';
 
 const router = Router();
 
 router.get('/', async (req, res) => {
+	const authReq = req as AuthenticatedRequest;
+
+	if (!authReq.auth.userId) {
+		return res.status(401).json({ error: 'Unauthorized' });
+	}
+
 	try {
 		const nflData = await getLeagueData('nba');
 		res.status(200).json(nflData);
