@@ -5,6 +5,7 @@ import apiNflDataRouter from '../routers/nflData';
 import apiMlbDataRouter from '../routers/mlbData';
 import apiPoolDataRouter from '../routers/poolData';
 import apiCompletePoolDataRouter from '../routers/completePoolData';
+import apiInvitationRouter from '../routers/invitation'
 import { clerkMiddleware } from '@clerk/express';
 import cors from 'cors';
 
@@ -31,6 +32,7 @@ app.use('/api/nfl_data', apiNflDataRouter);
 app.use('/api/mlb_data', apiMlbDataRouter);
 app.use('/api/pools', apiPoolDataRouter);
 app.use('/api/complete_pools', apiCompletePoolDataRouter);
+app.use('/api/invitation', apiInvitationRouter);
 
 app.get('/api', (req, res) => {
 	res.send('Welcome to the Wizpool backend on vercel!');
