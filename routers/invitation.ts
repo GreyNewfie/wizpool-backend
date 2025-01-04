@@ -4,7 +4,7 @@ import {turso } from '../db'
 import { createClerkClient } from "@clerk/backend";
 
 const router = Router();
-const clekClient = createClerkClient({
+const clerkClient = createClerkClient({
     secretKey: process.env.CLERK_SECRET_KEY
 })
 
@@ -34,7 +34,7 @@ router.post('/:poolId', async (req: Request, res: Response) => {
         // Step 2: Check if the email belongs to an existing Clerk user
         let inviteeId: string | null = null; 
         try {
-            const users = await clekClient.users.getUserList({ query: email})
+            const users = await clerkClient.users.getUserList({ query: email})
 
             if (users.data.length > 0) 
                 inviteeId = users.data[0].id;
@@ -57,6 +57,35 @@ router.post('/:poolId', async (req: Request, res: Response) => {
             args:[poolId, userId, email, inviteeId, 'pending']
         })
 
+            if (inviteeId) {
+                const transaction = await turso.transaction('write');
+
+                try {
+                    await transaction.execute({
+                        sql: "INSERT INTO user_pools (user_id, pool_id) VALUES (?, ?)",
+                        args: [inviteeId, poolId]
+                    })
+
+                    await transaction.execute({
+                        sql: "UPDATE pool_invitations SET status = ? WHERE pool_id = ? AND inviteeId = ?",
+                        args: ['accepted', poolId, inviteeId]
+                    })
+
+                    await transaction.commit()
+                } catch (error) {
+                    await transaction.rollback();
+                    throw error;
+            }
+            } else {
+                await clerkClient.invitations.createInvitation({
+                    emailAddress: email,
+                    redirectUrl: 'https://wizpool-app.vercel.app/',
+                    publicMetadata: {
+                        poolId: poolId,
+                    }    
+                })
+            }
+            
         res.status(200).json({
             message: 'Invitation created successfully',
             inviteeId: inviteeId

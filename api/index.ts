@@ -32,7 +32,7 @@ app.use('/api/nfl_data', apiNflDataRouter);
 app.use('/api/mlb_data', apiMlbDataRouter);
 app.use('/api/pools', apiPoolDataRouter);
 app.use('/api/complete_pools', apiCompletePoolDataRouter);
-app.use('/api/invitation', apiInvitationRouter);
+app.use('/api/invitations', apiInvitationRouter);
 
 app.get('/api', (req, res) => {
 	res.send('Welcome to the Wizpool backend on vercel!');
