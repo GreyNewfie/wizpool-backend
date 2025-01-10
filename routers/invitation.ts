@@ -79,7 +79,7 @@ router.post('/:poolId', async (req: Request, res: Response) => {
             } else {
                 await clerkClient.invitations.createInvitation({
                     emailAddress: email,
-                    redirectUrl: 'https://wizpool-app.vercel.app/',
+                    redirectUrl: 'https://wizpool-app.vercel.app/accept-invite',
                     publicMetadata: {
                         poolId: poolId,
                     }    
