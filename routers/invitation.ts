@@ -52,11 +52,15 @@ router.post('/:poolId', async (req: Request, res: Response) => {
 
         // Step 4: Create the invitation
         const result = await turso.execute({
-            sql: 'INSERT INTO pool_invitations (pool_id, inviter_id, invitee_email, invitee_id, status) VALUES (?, ?, ?, ?, ?)',
+            sql: 'INSERT INTO pool_invitations (pool_id, inviter_id, invitee_email, invitee_id, status) VALUES (?, ?, ?, ?, ?) RETURNING id',
             args: [poolId, userId, email, inviteeId, 'pending']
         })
 
-        const invitationId = result.rows[0].id;
+        const invitationId = result.rows[0]?.id;
+
+        if (!invitationId) {
+            throw new Error('Failed to get invitation ID');
+        }
 
         // Check if invitee has a Clerk account, if so add them to user pools
         if (inviteeId) {
@@ -69,7 +73,7 @@ router.post('/:poolId', async (req: Request, res: Response) => {
                 })
 
                 await transaction.execute({
-                    sql: "UPDATE pool_invitations SET status = ? WHERE pool_id = ? AND inviteeId = ?",
+                    sql: "UPDATE pool_invitations SET status = ? WHERE pool_id = ? AND invitee_id = ?",
                     args: ['accepted', poolId, inviteeId]
                 })
 
@@ -99,19 +103,19 @@ router.post('/:poolId', async (req: Request, res: Response) => {
     }
 });
 
-router.put('/:id/accept', async (req: Request, res: Response) => {
+router.put('/:invitationId/accept', async (req: Request, res: Response) => {
     const authReq = req as AuthenticatedRequest;
     const userId = authReq.auth.userId;
 
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     try {
-        const { id } = req.params;
+        const { invitationId } = req.params;
 
         // Step 1: verify the invitation exists and is valid
         const invitation = await turso.execute({
             sql: 'SELECT * FROM pool_invitations WHERE id = ? and status = ?',
-            args: [id, 'pending']
+            args: [invitationId, 'pending']
         })
 
         if (!invitation.rows?.length)
@@ -140,7 +144,7 @@ router.put('/:id/accept', async (req: Request, res: Response) => {
 
             await transaction.execute({
                 sql: "UPDATE pool_invitations SET status = ?, invitee_id = ? WHERE id = ?",
-                args: ['accepted', userId, id]
+                args: ['accepted', userId, invitationId]
             })
 
             await transaction.commit();
