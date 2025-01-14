@@ -83,14 +83,32 @@ router.post('/:poolId', async (req: Request, res: Response) => {
                 throw error;
             }
         } else {
-            await clerkClient.invitations.createInvitation({
-                emailAddress: email,
-                redirectUrl: 'https://wizpool-app.vercel.app/accept-invite',
-                publicMetadata: {
-                    poolId: poolId,
-                    invitationId: invitationId,
-                }
-            })
+            try {
+                console.log('Creating Clerk invitation for:', email, 'with metadata:', {
+                    poolId,
+                    invitationId
+                });
+                
+                await clerkClient.invitations.createInvitation({
+                    emailAddress: email,
+                    redirectUrl: 'https://wizpool-app.vercel.app/accept-invite',
+                    publicMetadata: {
+                        poolId: poolId,
+                        invitationId: invitationId,
+                    }
+                });
+                
+                console.log('Successfully created Clerk invitation for:', email);
+            } catch (clerkError: unknown) {
+                console.error('Clerk invitation creation error:', {
+                    error: clerkError,
+                    email,
+                    poolId,
+                    invitationId
+                });
+                const errorMessage = clerkError instanceof Error ? clerkError.message : 'Unknown error occurred';
+                throw new Error(`Failed to create Clerk invitation: ${errorMessage}`);
+            }
         }
 
         res.status(200).json({
