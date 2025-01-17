@@ -121,35 +121,28 @@ router.post('/:poolId', async (req: Request, res: Response) => {
     }
 });
 
-router.put('/:invitationId/accept', async (req: Request, res: Response) => {
+router.put('/:poolId/accept', async (req: Request, res: Response) => {
     const authReq = req as AuthenticatedRequest;
     const userId = authReq.auth.userId;
 
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     try {
-        const { invitationId } = req.params;
+        const { poolId } = req.params;
 
-        // Step 1: verify the invitation exists and is valid
+        // Verify this user is the invitee by finding a pending invitation for their email
+        const user = await clerkClient.users.getUser(userId);
+        const userEmail = user.emailAddresses[0].emailAddress.toLowerCase();
+
         const invitation = await turso.execute({
-            sql: 'SELECT * FROM pool_invitations WHERE id = ? and status = ?',
-            args: [invitationId, 'pending']
-        })
+            sql: 'SELECT * FROM pool_invitations WHERE pool_id = ? AND invitee_email = ? AND status = ?',
+            args: [poolId, userEmail, 'pending']
+        });
 
         if (!invitation.rows?.length)
             return res.status(404).json({ error: 'Invitation not found or has already been accepted' })
 
         const inviteData = invitation.rows[0];
-
-        if (!inviteData?.invitee_email)
-            return res.status(400).json({ error: 'Invalid invitation data' })
-
-        // Verify this user is the invitee
-        const user = await clerkClient.users.getUser(userId);
-        const userEmail = user.emailAddresses[0].emailAddress.toLocaleLowerCase();
-
-        if (typeof inviteData.invitee_email === 'string' && userEmail !== inviteData.invitee_email.toLowerCase())
-            return res.status(403).json({ error: 'This invitation was not meant for you' });
 
         // Add user to user pool and mark invitation as accepted
         const transaction = await turso.transaction('write');
@@ -157,19 +150,19 @@ router.put('/:invitationId/accept', async (req: Request, res: Response) => {
         try {
             await transaction.execute({
                 sql: 'INSERT INTO user_pools (user_id, pool_id) VALUES (?, ?)',
-                args: [userId, inviteData.pool_id]
+                args: [userId, poolId]
             })
 
             await transaction.execute({
                 sql: "UPDATE pool_invitations SET status = ?, invitee_id = ? WHERE id = ?",
-                args: ['accepted', userId, invitationId]
+                args: ['accepted', userId, inviteData.id]
             })
 
             await transaction.commit();
 
             res.status(200).json({
                 message: 'Invitation accepted successfully',
-                poolId: inviteData.pool_id
+                poolId: poolId,
             });
         } catch (error) {
             await transaction.rollback();
