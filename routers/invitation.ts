@@ -88,7 +88,7 @@ router.post('/:poolId', async (req: Request, res: Response) => {
                     poolId,
                     invitationId
                 });
-                
+
                 await clerkClient.invitations.createInvitation({
                     emailAddress: email,
                     redirectUrl: 'https://wizpool-app.vercel.app/accept-invite',
@@ -97,7 +97,7 @@ router.post('/:poolId', async (req: Request, res: Response) => {
                         invitationId: invitationId,
                     }
                 });
-                
+
                 console.log('Successfully created Clerk invitation for:', email);
             } catch (clerkError: unknown) {
                 console.error('Clerk invitation creation error:', {
@@ -159,6 +159,11 @@ router.put('/:poolId/accept', async (req: Request, res: Response) => {
             })
 
             await transaction.commit();
+
+            // Remove metadata from user once invitation has been accepted
+            await clerkClient.users.updateUserMetadata(userId, {
+                publicMetadata: undefined
+            })
 
             res.status(200).json({
                 message: 'Invitation accepted successfully',
