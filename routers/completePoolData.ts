@@ -48,7 +48,7 @@ router.get('/:poolId', async (req: Request, res: Response) => {
 
 		// Fetch all pool data from the database
 		const combinedQuery = `
-    SELECT 
+    SELECT DISTINCT
       pools.id AS pool_id,
       pools.name AS pool_name,
       pools.league,
@@ -57,8 +57,7 @@ router.get('/:poolId', async (req: Request, res: Response) => {
       pool_players.player_id,
       players.name AS player_name,
       pool_players.player_team_name,
-      player_teams.team_key,
-      user_pools.user_id
+      player_teams.team_key
     FROM 
       pools
     LEFT JOIN 
@@ -67,11 +66,18 @@ router.get('/:poolId', async (req: Request, res: Response) => {
       players ON pool_players.player_id = players.id
     LEFT JOIN 
       player_teams ON players.id = player_teams.player_id AND player_teams.pool_id = pools.id
-    LEFT JOIN 
-      user_pools ON pools.id = user_pools.pool_id
     WHERE 
-      pools.id = ?;
+      pools.id = ?
+      AND EXISTS (
+        SELECT 1 FROM user_pools 
+        WHERE user_pools.pool_id = pools.id
+      )
+    GROUP BY
+      pools.id,
+      pool_players.player_id,
+      player_teams.team_key;
     `;
+
 		const result = await turso.execute({
 			sql: combinedQuery,
 			args: [poolId],
