@@ -57,7 +57,8 @@ router.get('/:poolId', async (req: Request, res: Response) => {
       pool_players.player_id,
       players.name AS player_name,
       pool_players.player_team_name,
-      player_teams.team_key
+      player_teams.team_key,
+      user_pools.user_id
     FROM 
       pools
     LEFT JOIN 
@@ -66,6 +67,8 @@ router.get('/:poolId', async (req: Request, res: Response) => {
       players ON pool_players.player_id = players.id
     LEFT JOIN 
       player_teams ON players.id = player_teams.player_id AND player_teams.pool_id = pools.id
+	LEFT JOIN
+	  user_pools ON pools.id = user_pools.pool_id
     WHERE 
       pools.id = ?
       AND EXISTS (
