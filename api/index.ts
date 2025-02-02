@@ -23,6 +23,9 @@ const corsOptions = {
 	],
 	methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 	allowedHeaders: ['Content-Type', 'Authorization'],
+	credentials: true,  // For aws deployment practice
+	exposedHeaders: ['Authorization'],  // For aws deployment practice
+	maxAge: 86400  // add this to cache preflight requests for 24 hours
 };
 
 app.use(cors(corsOptions));
