@@ -19,6 +19,7 @@ const corsOptions = {
 		'http://localhost:5173',
 		'https://wizpool-backend.vercel.app/',
 		'https://wizpool-app-git-staging-greynewfies-projects.vercel.app',
+		'https://d5tm2l9s4796wg.cloudfront.net'
 	],
 	methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 	allowedHeaders: ['Content-Type', 'Authorization'],
