@@ -5,7 +5,7 @@
 	"scripts": {
 		"prebuild": "mkdir -p dist",
 		"build": "tsc",
-		"start": "node dist/index.js",
+		"start": "node dist/api/index.js",
 		"dev": "vercel dev",
 		"vercel-build": "tsc"
 	},
