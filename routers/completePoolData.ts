@@ -46,6 +46,30 @@ router.get('/:poolId', async (req: Request, res: Response) => {
 				.send('A Pool ID is required in order to get complete pool data');
 		}
 
+		// First check if the pool exists
+		const poolExistsQuery = `SELECT id FROM pools WHERE id = ?`;
+		const poolResult = await turso.execute({
+			sql: poolExistsQuery,
+			args: [poolId],
+		});
+
+		if (poolResult.rows.length === 0) {
+			console.log(`Pool ${poolId} not found in the database`);
+			return res.status(404).json({ error: `Pool with id ${poolId} not found` });
+		}
+
+		// Then check if the user has access to the pool
+		const userAccessQuery = `SELECT pool_id FROM user_pools WHERE pool_id = ? AND user_id = ?`;
+		const accessResult = await turso.execute({
+			sql: userAccessQuery,
+			args: [poolId, userId],
+		});
+
+		if (accessResult.rows.length === 0) {
+			console.log(`User ${userId} does not have access to pool ${poolId}`);
+			return res.status(403).json({ error: `You do not have access to this pool` });
+		}
+
 		// Fetch all pool data from the database
 		const combinedQuery = `
     SELECT DISTINCT
