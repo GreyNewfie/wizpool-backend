@@ -110,7 +110,7 @@ router.get('/user/:userId', async (req: Request, res: Response) => {
 		res.status(200).json(pools);
 	} catch (error) {
 		console.error('Error retrieving user pools from database: ', error);
-		res.status(500);
+		res.status(500).json({ error: 'Failed to fetch user pools' });
 	}
 });
 
