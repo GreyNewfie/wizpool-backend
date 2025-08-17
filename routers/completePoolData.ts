@@ -196,7 +196,6 @@ router.get('/:poolId', async (req: Request, res: Response) => {
 			return completePoolData;
 		};
 
-		// TODO: When multi-season storage is supported, pass season context into getLeagueData
 		const leagueData = await getLeagueData(String(result.rows[0].league));
 
 		const completePoolData = transformToNestedStructure(flatData, leagueData);
