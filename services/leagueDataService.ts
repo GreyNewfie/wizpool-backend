@@ -48,11 +48,32 @@ export default async function getLeagueData(
 		}
 
 		// If reach here data doesn't exist or is outdated, fetch new data from external API and update the database
-		const apiUrl = process.env[`${league.toUpperCase()}_API_URL`];
+		let apiUrl = process.env[`${league.toUpperCase()}_API_URL`];
 		if (!apiUrl)
 			throw new Error(
 				`${league.toUpperCase()}_API_URL environment variable is not set`
 			);
+
+		// Determine season year using an August-July window.
+		// Example: Aug 2024 - Jul 2025 => 2024; Aug 2025 - Jul 2026 => 2025
+		function getSeasonYear(d: Date): number {
+			const year = d.getFullYear();
+			const month = d.getMonth(); // 0=Jan, 7=Aug
+			return month >= 7 ? year : year - 1;
+		}
+
+		// TODO: Support past seasons by storing season-specific snapshots in DB.
+		// For now, derive season year from the current date (Aug–Jul window).
+		const seasonYear = getSeasonYear(new Date());
+
+		// Allow two ways to specify the API URL:
+		// 1) Use a placeholder token {SEASON} in the env url to be replaced (preferred)
+		// 2) If the URL contains a concrete Standings/<year>, replace the year with the computed seasonYear
+		if (apiUrl.includes('{SEASON}')) {
+			apiUrl = apiUrl.replace('{SEASON}', String(seasonYear));
+		} else {
+			apiUrl = apiUrl.replace(/(Standings\/)\d{4}/, `$1${seasonYear}`);
+		}
 
 		// Fetch and process new data
 		const newData: ProcessedTeamData[] = await processData(league, apiUrl);
