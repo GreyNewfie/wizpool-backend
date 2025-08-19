@@ -1,6 +1,7 @@
 import { turso } from '../db';
 import processData from './dataProcessor';
 import { LeagueData, ProcessedTeamData } from '../types';
+import { nflTeams, nbaTeams, mlbTeams } from '../data/teamsCatalog';
 
 export default async function getLeagueData(
 	league: string
@@ -80,6 +81,41 @@ export default async function getLeagueData(
 		if (!newData)
 			throw new Error(`${league.toUpperCase()} data processing failed`);
 
+		// If the external API returned success but no teams (preseason/offseason),
+		// return our static catalog instead of writing empties to the DB.
+		if (Array.isArray(newData) && newData.length === 0) {
+			const todayEmpty = new Date().toLocaleDateString('en-US');
+			const catalogEmptyCase: ProcessedTeamData[] = (() => {
+				switch (league.toLowerCase()) {
+					case 'nfl':
+						return nflTeams;
+					case 'nba':
+						return nbaTeams;
+					case 'mlb':
+						return mlbTeams;
+					default:
+						return [];
+				}
+			})();
+
+			if (catalogEmptyCase.length > 0) {
+				function mapProcessTeamDatatoLeagueData(
+					processedTeamData: ProcessedTeamData[],
+					dateUpdated: string
+				): LeagueData[] {
+					return processedTeamData.map((team) => ({
+						...team,
+						date_updated: dateUpdated,
+					}));
+				}
+
+				console.warn(
+					`External data empty for ${league.toUpperCase()}; serving fallback teams catalog.`,
+				);
+				return mapProcessTeamDatatoLeagueData(catalogEmptyCase, todayEmpty);
+			}
+		}
+
 		// Clear old data from the database
 		await turso.execute({
 			sql: `DELETE FROM ${league}_data`,
@@ -120,6 +156,42 @@ export default async function getLeagueData(
 		return leagueData;
 	} catch (error) {
 		console.error(`Error in getLeagueData for ${league}:`, error);
+
+		// Fallback: return a static, season-agnostic teams catalog.
+		// This supports the Draft page when seasonal data is unavailable (e.g., preseason).
+		const today = new Date().toLocaleDateString('en-US');
+
+		const catalog: ProcessedTeamData[] = (() => {
+			switch (league.toLowerCase()) {
+				case 'nfl':
+					return nflTeams;
+				case 'nba':
+					return nbaTeams;
+				case 'mlb':
+					return mlbTeams;
+				default:
+					return [];
+			}
+		})();
+
+		if (catalog.length > 0) {
+			function mapProcessTeamDatatoLeagueData(
+				processedTeamData: ProcessedTeamData[],
+				dateUpdated: string
+			): LeagueData[] {
+				return processedTeamData.map((team) => ({
+					...team,
+					date_updated: dateUpdated,
+				}));
+			}
+
+			console.warn(
+				`Returning fallback ${league.toUpperCase()} teams catalog due to missing/empty seasonal data.`,
+			);
+			return mapProcessTeamDatatoLeagueData(catalog, today);
+		}
+
+		// If no catalog exists, rethrow to preserve error behavior
 		throw error;
 	}
 }
