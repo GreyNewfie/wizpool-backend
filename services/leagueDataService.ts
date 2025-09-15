@@ -31,18 +31,19 @@ export default async function getLeagueData(
 			const lastUpdate = existingLeagueData[0].date_updated;
 			console.log('Last Update:', lastUpdate);
 
-			// Type guard to check if lastUpdated is a string to pass to new Date
+			let lastUpdatedMs: number | null = null;
 			if (typeof lastUpdate === 'string') {
-				// Extract just the date part (YYYY-MM-DD) from the stored timestamp
-				const lastUpdatedDate = lastUpdate.split(' ')[0];
-				const today = new Date().toISOString().split('T')[0];
+				// Normalize common DB timestamp format "YYYY-MM-DD HH:MM:SS" to ISO-like for parsing
+				const normalized = lastUpdate.replace(' ', 'T');
+				const parsed = Date.parse(normalized);
+				if (!Number.isNaN(parsed)) lastUpdatedMs = parsed;
+			}
 
-				console.log('Last Updated Date:', lastUpdatedDate);
-				console.log('Today:', today);
-
-				// If the data was updated today, return the existing data
-				if (lastUpdatedDate === today) {
-					console.log('League data is up to date and retrieved from db');
+			if (lastUpdatedMs !== null) {
+				const now = Date.now();
+				const HOUR_MS = 60 * 60 * 1000;
+				if (now - lastUpdatedMs < HOUR_MS) {
+					console.log('League data is fresh (<1 hour); serving from db');
 					return existingLeagueData;
 				}
 			}
